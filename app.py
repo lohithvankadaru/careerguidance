@@ -1,4 +1,5 @@
 import streamlit as st
+import re
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Career Navigator", page_icon="🧭", layout="wide")
@@ -30,6 +31,22 @@ st.markdown("""
         background: #e8f5e9; color: #2e7d32; padding: 5px 10px;
         border-radius: 5px; font-weight: bold;
     }
+    .lakshya-header {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        padding: 15px; border-radius: 15px; text-align: center;
+        color: white; margin-bottom: 15px;
+    }
+    .chat-message {
+        padding: 10px 15px; border-radius: 15px; margin: 8px 0;
+        max-width: 90%;
+    }
+    .user-message {
+        background: #e3f2fd; color: #1565c0; margin-left: auto;
+    }
+    .bot-message {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -47,6 +64,8 @@ if "answers" not in st.session_state:
     st.session_state.answers = {}
 if "selected_career" not in st.session_state:
     st.session_state.selected_career = None
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
 
 # --- OPTIONS ---
 SUBJECT_OPTIONS = ["Math", "English", "Physics", "Chemistry", "Biology", "History", 
@@ -395,6 +414,386 @@ CAREERS = {
         ]
     }
 }
+
+# --- LAKSHYA AI ASSISTANT (Rule-based, no API needed) ---
+def lakshya_respond(user_input):
+    """Lakshya - Your Career Guide Assistant (Free, Offline, No API)"""
+    original_input = user_input
+    user_input = user_input.lower().strip()
+    
+    # === SMART KEYWORD EXTRACTION ===
+    # Common words to ignore
+    stop_words = ["what", "is", "the", "a", "an", "for", "of", "in", "to", "how", "can", "i", 
+                  "get", "be", "become", "about", "tell", "me", "give", "show", "explain", 
+                  "which", "who", "where", "when", "why", "do", "does", "please", "want", "need"]
+    
+    # Extract meaningful words
+    words = [w for w in re.findall(r'\w+', user_input) if w not in stop_words and len(w) > 2]
+    
+    # === GREETINGS ===
+    greetings = ["hi", "hello", "hey", "namaste", "hola", "good morning", "good evening", "howdy"]
+    if any(g in user_input for g in greetings) and len(user_input) < 20:
+        careers_icons = [f"{CAREERS[c]['icon']}" for c in list(CAREERS.keys())[:6]]
+        return f"""🙏 **Namaste! I'm Lakshya!**
+
+I know about **{len(CAREERS)} careers**: {' '.join(careers_icons)}
+
+**Ask me:**
+• "Doctor salary" or "Software Developer courses"
+• "Best career for high salary"
+• "Compare Doctor vs Engineer"
+
+What would you like to know?"""
+    
+    # === THANK YOU ===
+    if any(word in user_input for word in ["thank", "thanks", "thx", "appreciate", "helpful"]):
+        return "😊 You're welcome! Feel free to ask more. Good luck with your career journey! 🌟"
+    
+    # === HELP ===
+    if any(word in user_input for word in ["help", "how to use", "what can you"]) and len(user_input) < 30:
+        return f"""🎯 **I'm Lakshya - Ask me about:**
+
+💰 **Salaries:** "Doctor salary", "Engineer pay"
+📚 **Courses:** "How to become lawyer"  
+🏢 **Companies:** "Top IT companies"
+🎓 **Universities:** "Best colleges for MBA"
+🚀 **High paying:** "Best career for money"
+🎨 **Creative:** "Creative career options"
+
+I know about: {', '.join(list(CAREERS.keys())[:5])}... and more!"""
+
+    # === FIND CAREER IN QUERY (Smart matching) ===
+    career_found = None
+    
+    # Direct match first
+    for career in CAREERS.keys():
+        if career.lower() in user_input:
+            career_found = career
+            break
+    
+    # Partial/keyword match if no direct match
+    if not career_found:
+        career_keywords = {
+            "doctor": "Doctor", "medical": "Doctor", "mbbs": "Doctor", "physician": "Doctor",
+            "software": "Software Developer", "developer": "Software Developer", "programmer": "Software Developer", 
+            "coding": "Software Developer", "coder": "Software Developer", "tech": "Software Developer",
+            "data": "Data Scientist", "analytics": "Data Scientist", "ml": "Data Scientist", "ai": "Data Scientist",
+            "lawyer": "Lawyer", "law": "Lawyer", "advocate": "Lawyer", "legal": "Lawyer",
+            "teacher": "Teacher", "teaching": "Teacher", "educator": "Teacher",
+            "professor": "Professor", "academic": "Professor", "research": "Professor",
+            "architect": "Architect", "building": "Architect", "construction": "Architect",
+            "designer": "Graphic Designer", "design": "Graphic Designer", "graphics": "Graphic Designer",
+            "robot": "Robotics Engineer", "robotics": "Robotics Engineer", "automation": "Robotics Engineer",
+            "athlete": "Athlete / Sports Coach", "sports": "Athlete / Sports Coach", "coach": "Athlete / Sports Coach",
+            "economist": "Economist", "economics": "Economist", "economy": "Economist",
+            "farmer": "Organic Farmer", "farming": "Organic Farmer", "agriculture": "Organic Farmer",
+            "finance": "Financial Advisor", "financial": "Financial Advisor", "investment": "Financial Advisor",
+            "journalist": "Photo Journalist", "journalism": "Photo Journalist", "photographer": "Photo Journalist",
+            "entrepreneur": "Entrepreneur", "startup": "Entrepreneur", "business": "Entrepreneur",
+            "ias": "Civil Servant (IAS/IPS)", "ips": "Civil Servant (IAS/IPS)", "civil service": "Civil Servant (IAS/IPS)", 
+            "upsc": "Civil Servant (IAS/IPS)", "government": "Civil Servant (IAS/IPS)",
+            "politician": "Politician", "politics": "Politician", "mla": "Politician", "mp": "Politician"
+        }
+        for keyword, career in career_keywords.items():
+            if keyword in user_input and career in CAREERS:
+                career_found = career
+                break
+    
+    # Career-specific queries
+    if career_found:
+        data = CAREERS[career_found]
+        
+        # Salary query
+        if any(word in user_input for word in ["salary", "pay", "earn", "income", "money", "package", "ctc"]):
+            sal = data.get("salary", {})
+            companies = data.get("companies", [])[:3]
+            return f"""💰 **{career_found} Salary:**
+• 🟢 Entry: {sal.get('entry', 'N/A')}
+• 🟡 Mid: {sal.get('mid', 'N/A')}
+• 🔴 Senior: {sal.get('senior', 'N/A')}
+
+🏢 **Top Recruiters:** {', '.join([c['name'] for c in companies])}"""
+
+        # Courses query
+        if any(word in user_input for word in ["course", "study", "degree", "qualification", "education", "learn"]):
+            courses = data.get("courses", [])
+            return f"""📚 **{career_found} - Recommended Courses:**
+{chr(10).join(['• ' + c for c in courses])}
+
+💡 Start with the basics and specialize later!"""
+
+        # Universities query
+        if any(word in user_input for word in ["university", "college", "institute", "school", "where to study"]):
+            unis_india = data.get("universities_india", [])[:4]
+            unis_abroad = data.get("universities_abroad", [])[:3]
+            return f"""🎓 **Universities for {career_found}:**
+
+**🇮🇳 India:** {', '.join(unis_india)}
+
+**🌍 Abroad:** {', '.join(unis_abroad)}"""
+
+        # Companies query
+        if any(word in user_input for word in ["company", "companies", "job", "recruit", "hire", "work"]):
+            companies = data.get("companies", [])
+            resp = f"🏢 **Top Companies for {career_found}:**\n\n"
+            for c in companies[:5]:
+                resp += f"• **{c['name']}** - {c['entry_salary']}\n"
+            return resp
+
+        # Skills query
+        if any(word in user_input for word in ["skill", "quality", "require", "need"]):
+            qualities = data.get("qualities", [])
+            return f"""🎯 **Skills for {career_found}:**
+{chr(10).join(['• ' + q for q in qualities])}
+
+📈 These skills are highly valued by employers!"""
+
+        # Future scope
+        if any(word in user_input for word in ["future", "scope", "growth", "demand", "trend"]):
+            return f"""🚀 **{career_found} - Future Outlook:**
+• High demand expected (2025-2030)
+• {data.get('salary', {}).get('senior', 'Great')} earning potential
+• Growing opportunities in India & abroad
+• New technologies creating more roles
+
+💡 Great time to start preparing!"""
+
+        # Pros/Cons
+        if any(word in user_input for word in ["pros", "cons", "advantage", "disadvantage", "good", "bad"]):
+            return f"""⚖️ **{career_found} - Pros & Cons:**
+
+✅ **Pros:**
+• {data.get('salary', {}).get('senior', 'High')} earning potential
+• Job satisfaction helping others
+• Respected profession
+
+❌ **Cons:**
+• May require long education
+• Competitive field
+• Work-life balance varies
+
+💡 Passion matters more than challenges!"""
+
+        # General career info (default)
+        return f"""{data.get('icon', '💼')} **{career_found}**
+
+{data.get('desc', '')}
+
+💰 **Salary Range:** {data.get('salary', {}).get('entry', 'N/A')} → {data.get('salary', {}).get('senior', 'N/A')}
+📚 **Key Course:** {data.get('courses', ['N/A'])[0]}
+🏢 **Top Company:** {data.get('companies', [{'name': 'N/A'}])[0]['name']}
+
+Ask about salary, courses, or companies!"""
+
+    # High salary career queries - more flexible matching
+    salary_triggers = ["high salary", "higher salary", "top salary", "best salary", "good salary", 
+                       "high paying", "top paying", "best paying", "more money", "earn more", 
+                       "rich", "wealthy", "high income", "best career for salary", "best career for money"]
+    if any(trigger in user_input for trigger in salary_triggers) or \
+       (any(word in user_input for word in ["salary", "money", "paying", "earn"]) and 
+        any(word in user_input for word in ["best", "top", "high", "good", "get", "want", "how"])):
+        return """💰 **Highest Paying Careers (2024):**
+
+1. 💻 **Software Developer** - ₹25-50 LPA (Senior)
+2. 📊 **Data Scientist** - ₹40-80 LPA (Senior)
+3. ⚖️ **Lawyer** - ₹1-5 Cr+ (Senior Partner)
+4. 🩺 **Doctor** - ₹50L-1Cr+ (Specialist)
+5. 💵 **Financial Advisor** - ₹30L-1Cr+ (Senior)
+
+💡 Tech & Finance grow fastest!"""
+
+    if "best" in user_input and any(word in user_input for word in ["creative", "art", "design", "artistic"]):
+        return """🎨 **Best Creative Careers:**
+
+1. 🎨 **Graphic Designer** - Design for brands
+2. 🏛️ **Architect** - Create buildings
+3. 📸 **Photo Journalist** - Visual storytelling
+4. 💻 **UI/UX Designer** - App/Web design
+
+💡 Portfolio matters more than degree!"""
+
+    if "best" in user_input and any(word in user_input for word in ["stable", "secure", "government", "safe", "permanent"]):
+        return """🔒 **Most Stable Careers:**
+
+1. 🏛️ **Civil Servant (IAS/IPS)** - Lifetime security
+2. 🎓 **Professor** - Academic tenure
+3. 🩺 **Doctor** - Always in demand
+4. 📚 **Teacher** - Govt benefits
+
+💡 Govt jobs = Pension + Security!"""
+
+    if "best" in user_input and any(word in user_input for word in ["easy", "simple", "quick", "fast"]):
+        return """⚡ **Fast-Track Careers:**
+
+1. 💻 **Web Developer** - 6-month bootcamp
+2. 🎨 **Graphic Designer** - Portfolio-based
+3. 📸 **Photographer** - Self-taught possible
+4. 💰 **Freelancer** - Start immediately
+
+💡 Skills > Degrees in these fields!"""
+
+    if "best" in user_input and any(word in user_input for word in ["abroad", "foreign", "international", "usa", "uk"]):
+        return """🌍 **Best Careers for Going Abroad:**
+
+1. 💻 **Software Developer** - H1B visa friendly
+2. 📊 **Data Scientist** - Global demand
+3. 🩺 **Doctor** - After USMLE/PLAB
+4. 🎓 **Professor** - Research positions
+
+💡 Tech has most visa sponsors!"""
+
+    # How to become queries
+    if any(word in user_input for word in ["how to become", "how to be", "path", "roadmap", "steps"]):
+        return """📍 **Career Roadmap:**
+
+1️⃣ Choose your target career
+2️⃣ Check required courses/degrees
+3️⃣ Build relevant skills
+4️⃣ Get internships/experience
+5️⃣ Apply to top companies
+
+💡 Ask about any specific career!"""
+
+    # Confused/undecided
+    if any(word in user_input for word in ["confused", "undecided", "don't know", "not sure", "which career"]):
+        return """🤔 **Feeling Confused?**
+
+Ask yourself:
+• What subjects do you enjoy?
+• Do you prefer stability or adventure?
+• Indoor work or outdoor?
+• High salary or work-life balance?
+
+💡 Take the survey above for personalized recommendations!"""
+
+    # Age/timing queries
+    if any(word in user_input for word in ["too late", "age", "old", "young", "when"]):
+        return """⏰ **It's Never Too Late!**
+
+• 👨‍💻 Many developers start in 30s
+• 🎓 Career changes are normal
+• 📚 Online learning makes it easier
+• 💪 Passion beats age
+
+💡 Start today - your future self will thank you!"""
+
+    # List careers
+    if any(word in user_input for word in ["all", "list", "careers", "show", "available"]):
+        career_list = [f"{CAREERS[c]['icon']} {c}" for c in list(CAREERS.keys())]
+        return "📋 **All Careers:**\n" + "\n".join(career_list)
+
+    # Comparison queries
+    if any(word in user_input for word in ["compare", "vs", "versus", "better", "or"]):
+        return """🔄 **Compare Careers:**
+
+Ask specifically:
+• 'Doctor salary vs Engineer salary'
+• 'Tell me about Lawyer'
+
+I'll give you detailed comparisons!"""
+
+    # === SMART FALLBACK ===
+    # Try to find ANY career that might be related
+    possible_matches = []
+    for career, data in CAREERS.items():
+        # Check if any word from user query matches career subjects or qualities
+        for word in words:
+            if word in [s.lower() for s in data.get("subjects", [])] or \
+               word in [q.lower() for q in data.get("qualities", [])]:
+                possible_matches.append(career)
+                break
+    
+    if possible_matches:
+        match = possible_matches[0]
+        return f"""🤔 I think you might be interested in **{match}**!
+
+{CAREERS[match]['icon']} {CAREERS[match]['desc']}
+
+💰 Salary: {CAREERS[match]['salary'].get('entry', 'N/A')} to {CAREERS[match]['salary'].get('senior', 'N/A')}
+
+Ask me: "{match} salary" or "{match} courses" for more details!"""
+
+    # Fun facts for truly unknown queries
+    import random
+    fun_tips = [
+        "💡 **Did you know?** Software developers are in such high demand that top companies offer ₹50 LPA+ to freshers!",
+        "💡 **Fun fact:** IAS officers get free housing, cars, and lifetime pension!",
+        "💡 **Trending:** Data Science jobs have grown 650% in the last 5 years!",
+        "💡 **Tip:** Creative careers like design value portfolio over degrees!",
+        "💡 **Insight:** Doctors in private practice can earn ₹1 Cr+ annually!",
+    ]
+    
+    return f"""🤔 I'm not sure about that specific query.
+
+{random.choice(fun_tips)}
+
+**Try asking:**
+• "Doctor salary" or "Software Developer courses"
+• "Best career for high salary"
+• "List all careers"
+
+Or click the quick buttons above! 👆"""
+
+# --- SIDEBAR: LAKSHYA AI CHATBOT ---
+with st.sidebar:
+    st.markdown("""
+    <div class="lakshya-header">
+        <h2>🎯 Lakshya AI</h2>
+        <p style="margin:0; font-size:12px;">Your Free Career Guide</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Quick action chips
+    st.markdown("**⚡ Quick:**")
+    cols = st.columns(3)
+    quick_queries = [
+        ("💰", "Best career for high salary"),
+        ("🎨", "Best creative careers"),
+        ("🔒", "Best stable government jobs"),
+        ("🌍", "Best careers for going abroad"),
+        ("�", "Courses for Software Developer"),
+        ("📋", "List all careers")
+    ]
+    for i, (emoji, query) in enumerate(quick_queries):
+        with cols[i % 3]:
+            if st.button(emoji, key=f"quick_{i}", help=query):
+                response = lakshya_respond(query)
+                st.session_state.chat_history.append({"role": "user", "content": query})
+                st.session_state.chat_history.append({"role": "assistant", "content": response})
+                st.rerun()
+    
+    st.markdown("---")
+    
+    # Chat container with messages
+    chat_container = st.container(height=350)
+    
+    with chat_container:
+        # Welcome message if no history
+        if not st.session_state.chat_history:
+            with st.chat_message("assistant", avatar="🎯"):
+                st.markdown("🙏 **Namaste!** I'm Lakshya, your career guide!")
+                st.markdown("Ask me about careers, salaries, courses, or companies!")
+        
+        # Display chat history
+        for msg in st.session_state.chat_history:
+            avatar = "🧑" if msg["role"] == "user" else "🎯"
+            with st.chat_message(msg["role"], avatar=avatar):
+                st.markdown(msg["content"])
+    
+    # Chat input at bottom
+    if prompt := st.chat_input("Ask Lakshya...", key="lakshya_chat"):
+        # Add user message
+        st.session_state.chat_history.append({"role": "user", "content": prompt})
+        # Get response
+        response = lakshya_respond(prompt)
+        st.session_state.chat_history.append({"role": "assistant", "content": response})
+        st.rerun()
+    
+    # Clear button
+    if st.session_state.chat_history:
+        if st.button("🗑️ Clear Chat", use_container_width=True):
+            st.session_state.chat_history = []
+            st.rerun()
 
 # --- MATCHING FUNCTION ---
 def match_careers(subjects, qualities, experiences=None, motivations=None):
