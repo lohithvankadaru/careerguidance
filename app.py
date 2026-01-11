@@ -1,7 +1,7 @@
 import streamlit as st
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="AI Career Navigator", page_icon="🧭", layout="wide")
+st.set_page_config(page_title="Career Navigator", page_icon="🧭", layout="wide")
 
 # --- CUSTOM CSS ---
 st.markdown("""
