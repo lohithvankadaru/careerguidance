@@ -92,6 +92,34 @@ EXPERIENCE_TO_CAREERS = {
     "🗣️ Debate or public speaking competitions": ["Lawyer", "Politician", "Civil Servant (IAS/IPS)"]
 }
 
+# Motivation Factor Options with realistic data
+MOTIVATION_OPTIONS = [
+    "💰 High Salary (Avg ₹25-50 LPA for top performers)",
+    "🔬 Scientific Discovery & Research (Impact millions through innovation)",
+    "🎨 Creative Expression (Design, art, building things)",
+    "🌍 Social Impact (Help communities, change lives)",
+    "🚀 Innovation & Entrepreneurship (Build your own venture)",
+    "📈 Career Growth (Fast promotions, leadership roles)",
+    "⚖️ Work-Life Balance (Flexible hours, remote work)",
+    "🏆 Fame & Recognition (Public figure, thought leader)",
+    "🔒 Job Security (Stable government/PSU jobs)",
+    "🌱 Sustainability & Environment (Protect the planet)"
+]
+
+# Map motivations to careers (weight: 5 - very high priority)
+MOTIVATION_TO_CAREERS = {
+    "💰 High Salary (Avg ₹25-50 LPA for top performers)": ["Software Developer", "Data Scientist", "Financial Advisor", "Lawyer", "Doctor"],
+    "🔬 Scientific Discovery & Research (Impact millions through innovation)": ["Doctor", "Professor", "Data Scientist", "Robotics Engineer"],
+    "🎨 Creative Expression (Design, art, building things)": ["Graphic Designer", "Architect", "Photo Journalist"],
+    "🌍 Social Impact (Help communities, change lives)": ["Doctor", "Teacher", "Civil Servant (IAS/IPS)", "Politician", "Organic Farmer"],
+    "🚀 Innovation & Entrepreneurship (Build your own venture)": ["Entrepreneur", "Software Developer", "Robotics Engineer"],
+    "📈 Career Growth (Fast promotions, leadership roles)": ["Software Developer", "Financial Advisor", "Civil Servant (IAS/IPS)", "Lawyer"],
+    "⚖️ Work-Life Balance (Flexible hours, remote work)": ["Graphic Designer", "Teacher", "Photo Journalist", "Professor"],
+    "🏆 Fame & Recognition (Public figure, thought leader)": ["Politician", "Athlete / Sports Coach", "Photo Journalist", "Entrepreneur"],
+    "🔒 Job Security (Stable government/PSU jobs)": ["Civil Servant (IAS/IPS)", "Teacher", "Professor", "Doctor"],
+    "🌱 Sustainability & Environment (Protect the planet)": ["Organic Farmer", "Architect"]
+}
+
 # --- CAREER DATABASE ---
 CAREERS = {
     "Software Developer": {
@@ -369,7 +397,7 @@ CAREERS = {
 }
 
 # --- MATCHING FUNCTION ---
-def match_careers(subjects, qualities, experiences=None):
+def match_careers(subjects, qualities, experiences=None, motivations=None):
     scores = {}
     for name, data in CAREERS.items():
         score = 0
@@ -377,12 +405,18 @@ def match_careers(subjects, qualities, experiences=None):
         score += sum(3 for s in subjects if s in data["subjects"])
         # Quality matching (weight: 2)
         score += sum(2 for q in qualities if q in data["qualities"])
-        # Experience matching (weight: 4 - highest priority!)
+        # Experience matching (weight: 4)
         if experiences:
             for exp in experiences:
                 if exp in EXPERIENCE_TO_CAREERS:
                     if name in EXPERIENCE_TO_CAREERS[exp]:
-                        score += 4  # Highest weight for experience match
+                        score += 4
+        # Motivation matching (weight: 5 - highest priority!)
+        if motivations:
+            for mot in motivations:
+                if mot in MOTIVATION_TO_CAREERS:
+                    if name in MOTIVATION_TO_CAREERS[mot]:
+                        score += 5  # Highest weight for motivation match
         if score > 0:
             scores[name] = score
     sorted_careers = sorted(scores.items(), key=lambda x: x[1], reverse=True)
@@ -416,18 +450,7 @@ if st.session_state.step == 1:
         else: st.error("Please enter your name")
 
 elif st.session_state.step == 2:
-    st.subheader("2️⃣ Which country are you from?")
-    country = st.text_input("Country", value=st.session_state.answers.get("country", ""), label_visibility="collapsed")
-    c1, c2 = st.columns(2)
-    if c1.button("⬅️ Back"): prev_step(); st.rerun()
-    if c2.button("Next ➡️"):
-        if country:
-            st.session_state.answers["country"] = country
-            next_step(); st.rerun()
-        else: st.error("Please enter your country")
-
-elif st.session_state.step == 3:
-    st.subheader("3️⃣ What are your favourite subjects?")
+    st.subheader("2️⃣ What are your favourite subjects?")
     subjects = st.multiselect("Subjects", SUBJECT_OPTIONS, default=st.session_state.answers.get("subjects", []), label_visibility="collapsed")
     c1, c2 = st.columns(2)
     if c1.button("⬅️ Back"): prev_step(); st.rerun()
@@ -437,8 +460,8 @@ elif st.session_state.step == 3:
             next_step(); st.rerun()
         else: st.error("Select at least one subject")
 
-elif st.session_state.step == 4:
-    st.subheader("4️⃣ What are your personal qualities?")
+elif st.session_state.step == 3:
+    st.subheader("3️⃣ What are your personal qualities?")
     qualities = st.multiselect("Qualities", QUALITY_OPTIONS, default=st.session_state.answers.get("qualities", []), label_visibility="collapsed")
     c1, c2 = st.columns(2)
     if c1.button("⬅️ Back"): prev_step(); st.rerun()
@@ -448,8 +471,8 @@ elif st.session_state.step == 4:
             next_step(); st.rerun()
         else: st.error("Select at least one quality")
 
-elif st.session_state.step == 5:
-    st.markdown("### 5️⃣ 🏆 Work Experience & Past Achievements")
+elif st.session_state.step == 4:
+    st.markdown("### 4️⃣ 🏆 Work Experience & Past Achievements")
     st.markdown("*Select all experiences and achievements that apply to you:*")
     
     prev_exp = st.session_state.answers.get("experiences", [])
@@ -466,14 +489,34 @@ elif st.session_state.step == 5:
         st.session_state.answers["experiences"] = experiences
         next_step(); st.rerun()
 
-elif st.session_state.step == 6:
-    st.subheader("6️⃣ Do you want to study abroad?")
+elif st.session_state.step == 5:
+    st.subheader("5️⃣ Do you want to study abroad?")
     abroad = st.radio("Study Abroad", ["Yes", "No", "Maybe"], index=["Yes", "No", "Maybe"].index(st.session_state.answers.get("study_abroad", "Yes")), label_visibility="collapsed")
     c1, c2 = st.columns(2)
     if c1.button("⬅️ Back"): prev_step(); st.rerun()
     if c2.button("Next ➡️"):
         st.session_state.answers["study_abroad"] = abroad
         next_step(); st.rerun()
+
+elif st.session_state.step == 6:
+    st.markdown("### 6️⃣ 🎯 What motivates you the most in a career?")
+    st.markdown("*Select the factors that are most important to you (realistic data shown):*")
+    
+    prev_mot = st.session_state.answers.get("motivations", [])
+    motivations = st.multiselect(
+        "Select your motivations",
+        options=MOTIVATION_OPTIONS,
+        default=prev_mot,
+        label_visibility="collapsed"
+    )
+    
+    c1, c2 = st.columns(2)
+    if c1.button("⬅️ Back"): prev_step(); st.rerun()
+    if c2.button("Next ➡️"):
+        if motivations:
+            st.session_state.answers["motivations"] = motivations
+            next_step(); st.rerun()
+        else: st.error("Select at least one motivation")
 
 elif st.session_state.step == 7:
     st.subheader("7️⃣ What impact do you want to make?")
@@ -485,7 +528,8 @@ elif st.session_state.step == 7:
         st.session_state.careers = match_careers(
             st.session_state.answers.get("subjects", []), 
             st.session_state.answers.get("qualities", []),
-            st.session_state.answers.get("experiences", [])
+            st.session_state.answers.get("experiences", []),
+            st.session_state.answers.get("motivations", [])
         )
         if not st.session_state.careers:
             st.session_state.careers = ["Software Developer", "Teacher", "Graphic Designer"]
@@ -545,7 +589,7 @@ elif st.session_state.step == 9:
     from universities import get_university_info
     
     # Indian Universities
-    st.markdown(f"### 🇮🇳 Universities in {answers.get('country', 'India')}")
+    st.markdown("### 🇮🇳 Universities in India")
     uni_cols = st.columns(3)
     for idx, uni in enumerate(data.get("universities_india", [])):
         uni_info = get_university_info(uni)
