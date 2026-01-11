@@ -34,7 +34,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- MAIN TITLE ---
-st.title("🚀 AI Career Navigator")
+st.title("🚀 Career Navigator")
 st.markdown("### Discover your future based on your personality, skills, and dreams.")
 st.divider()
 
