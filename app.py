@@ -1,5 +1,6 @@
 import streamlit as st
 import re
+from quizzes import CAREER_QUIZZES
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Career Navigator", page_icon="🧭", layout="wide")
@@ -66,6 +67,14 @@ if "selected_career" not in st.session_state:
     st.session_state.selected_career = None
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
+if "quiz_active" not in st.session_state:
+    st.session_state.quiz_active = False
+if "quiz_score" not in st.session_state:
+    st.session_state.quiz_score = 0
+if "current_question_index" not in st.session_state:
+    st.session_state.current_question_index = 0
+if "user_answers" not in st.session_state:
+    st.session_state.user_answers = {}
 
 # --- OPTIONS ---
 SUBJECT_OPTIONS = ["Math", "English", "Physics", "Chemistry", "Biology", "History", 
@@ -145,6 +154,7 @@ CAREERS = {
         "icon": "💻", "desc": "Design and build software applications and systems",
         "subjects": ["Math", "Coding", "Physics"],
         "qualities": ["Analytical Thinking", "Problem Solving", "Creativity"],
+        "main_topics": ["Designing and building applications", "Data Structures & Algorithms", "Object-Oriented Programming", "Database Management", "System Design", "Cloud Computing"],
         "courses": ["B.Tech Computer Science", "BCA", "Online Bootcamps (Coursera, Udemy)", "M.Tech Software Engineering"],
         "universities_india": ["IIT Bombay", "IIT Delhi", "BITS Pilani", "NIT Trichy", "IIIT Hyderabad"],
         "universities_abroad": ["MIT (USA)", "Stanford University (USA)", "Carnegie Mellon (USA)", "ETH Zurich (Switzerland)", "University of Cambridge (UK)"],
@@ -161,6 +171,7 @@ CAREERS = {
         "icon": "🩺", "desc": "Diagnose and treat patients to improve health and save lives",
         "subjects": ["Biology", "Chemistry", "Physics"],
         "qualities": ["Empathy", "Patience", "Attention to Detail", "Communication"],
+        "main_topics": ["Comprehensive study of medical science", "Human Anatomy & Physiology", "Biochemistry", "Pathology & Pharmacology", "Clinical expertise in Diagnosis", "Patient Care"],
         "courses": ["MBBS (5.5 years)", "MD/MS Specialization", "NEET Entrance Exam", "Super-specialization (DM/MCh)"],
         "universities_india": ["AIIMS Delhi", "CMC Vellore", "JIPMER Puducherry", "Armed Forces Medical College", "Maulana Azad Medical College"],
         "universities_abroad": ["Harvard Medical School (USA)", "Johns Hopkins (USA)", "Oxford University (UK)", "University of Melbourne (Australia)", "Karolinska Institute (Sweden)"],
@@ -177,6 +188,7 @@ CAREERS = {
         "icon": "📊", "desc": "Analyze complex data to extract insights and drive decisions",
         "subjects": ["Math", "Coding", "Economics"],
         "qualities": ["Analytical Thinking", "Critical Thinking", "Curiosity", "Problem Solving"],
+        "main_topics": ["Extracting insights from complex data", "Statistics", "Machine Learning Algorithms", "Data Visualization", "Big Data Technologies", "Programming in Python or R"],
         "courses": ["B.Tech + M.Tech in Data Science", "MSc Statistics", "Online certifications (Coursera, edX)", "PhD in Machine Learning"],
         "universities_india": ["IISc Bangalore", "IIT Madras", "ISI Kolkata", "IIT Kharagpur", "IIIT Hyderabad"],
         "universities_abroad": ["MIT (USA)", "Stanford (USA)", "UC Berkeley (USA)", "ETH Zurich (Switzerland)", "University of Toronto (Canada)"],
@@ -193,6 +205,7 @@ CAREERS = {
         "icon": "🏛️", "desc": "Design buildings that are functional, safe, and aesthetically pleasing",
         "subjects": ["Art", "Math", "Physics"],
         "qualities": ["Creativity", "Attention to Detail", "Problem Solving", "Communication"],
+        "main_topics": ["Art and science of building design", "Architectural Design", "Structural Systems", "Building Materials", "Sustainable Design", "Urban Planning", "History of Architecture"],
         "courses": ["B.Arch (5 years)", "M.Arch", "NATA Entrance Exam", "Sustainable Design Certifications"],
         "universities_india": ["IIT Kharagpur", "SPA Delhi", "CEPT Ahmedabad", "NIT Trichy", "JJ School of Architecture Mumbai"],
         "universities_abroad": ["Harvard GSD (USA)", "MIT (USA)", "AA School London (UK)", "TU Delft (Netherlands)", "ETH Zurich (Switzerland)"],
@@ -209,6 +222,7 @@ CAREERS = {
         "icon": "🎨", "desc": "Create visual content for brands, websites, and marketing",
         "subjects": ["Art", "Coding", "English"],
         "qualities": ["Creativity", "Attention to Detail", "Communication", "Adaptability"],
+        "main_topics": ["Visual communication and aesthetics", "Typography", "Color Theory", "Layout Design", "Branding", "Digital Illustration", "Adobe Creative Suite"],
         "courses": ["BFA Graphic Design", "B.Des Communication Design", "Adobe Certifications", "UI/UX Bootcamps"],
         "universities_india": ["NID Ahmedabad", "Srishti Bangalore", "MIT Institute of Design Pune", "Pearl Academy", "NIFT"],
         "universities_abroad": ["Rhode Island School of Design (USA)", "Parsons New York (USA)", "Royal College of Art (UK)", "ArtCenter College (USA)", "Central Saint Martins (UK)"],
@@ -225,6 +239,7 @@ CAREERS = {
         "icon": "📚", "desc": "Educate and inspire students to learn and grow",
         "subjects": ["English", "History", "Civics"],
         "qualities": ["Patience", "Communication", "Empathy", "Leadership"],
+        "main_topics": ["Theory and practice of education", "Pedagogy", "Child Psychology", "Classroom Management", "Curriculum Development", "Assessment Strategies", "Subject-specific Methodologies"],
         "courses": ["B.Ed (Bachelor of Education)", "M.Ed", "CTET/TET Exams", "Subject-specific Masters"],
         "universities_india": ["Delhi University", "Jamia Millia Islamia", "BHU Varanasi", "TISS Mumbai", "Azim Premji University"],
         "universities_abroad": ["Harvard Graduate School of Education (USA)", "Stanford Education (USA)", "UCL Institute of Education (UK)", "University of Melbourne (Australia)", "University of Toronto (Canada)"],
@@ -241,6 +256,7 @@ CAREERS = {
         "icon": "🤖", "desc": "Design and build robots and automated systems",
         "subjects": ["Robotics", "Coding", "Math", "Physics"],
         "qualities": ["Problem Solving", "Creativity", "Analytical Thinking", "Curiosity"],
+        "main_topics": ["Integrating mechanics, electronics, and software", "Kinematics", "Control Systems", "Sensors & Actuators", "Artificial Intelligence", "Embedded Systems"],
         "courses": ["B.Tech Robotics/Mechatronics", "M.Tech Automation", "ROS Certifications", "AI/ML Courses"],
         "universities_india": ["IIT Kanpur", "IIT Bombay", "BITS Pilani", "VIT Vellore", "Manipal Institute of Technology"],
         "universities_abroad": ["Carnegie Mellon Robotics (USA)", "MIT (USA)", "ETH Zurich (Switzerland)", "Imperial College London (UK)", "University of Tokyo (Japan)"],
@@ -257,6 +273,7 @@ CAREERS = {
         "icon": "⚖️", "desc": "Represent clients in legal matters and advocate for justice",
         "subjects": ["Civics", "English", "History"],
         "qualities": ["Communication", "Critical Thinking", "Analytical Thinking", "Leadership"],
+        "main_topics": ["Interpretation and application of laws", "Constitutional Law", "Criminal Law", "Civil Procedure", "Corporate Law", "Legal Research", "Argumentation and Advocacy"],
         "courses": ["5-year Integrated LLB", "3-year LLB after graduation", "LLM Specialization", "Bar Council Enrollment"],
         "universities_india": ["NLSIU Bangalore", "NALSAR Hyderabad", "NLU Delhi", "NUJS Kolkata", "ILS Pune"],
         "universities_abroad": ["Harvard Law School (USA)", "Yale Law School (USA)", "Oxford University (UK)", "Cambridge University (UK)", "Columbia Law School (USA)"],
@@ -273,6 +290,7 @@ CAREERS = {
         "icon": "🏆", "desc": "Compete professionally or train athletes for peak performance",
         "subjects": ["Physical Education", "Biology", "Math"],
         "qualities": ["Leadership", "Teamwork", "Patience", "Adaptability"],
+        "main_topics": ["Physical performance and strategy", "Sports Science", "Kinesiology", "Nutrition", "Psychology of Sports", "Training Methodologies", "Injury Prevention"],
         "courses": ["B.P.Ed", "M.P.Ed", "Sports Science Degree", "Coaching Certifications (NIS)"],
         "universities_india": ["LNIPE Gwalior", "SAI Training Centers", "Symbiosis Sports", "Amity Sports", "KIIT Bhubaneswar"],
         "universities_abroad": ["Loughborough University (UK)", "University of Florida (USA)", "Australian Institute of Sport", "German Sport University Cologne", "University of Oregon (USA)"],
@@ -289,6 +307,7 @@ CAREERS = {
         "icon": "📈", "desc": "Study economic trends and advise on financial policies",
         "subjects": ["Economics", "Math", "History"],
         "qualities": ["Analytical Thinking", "Critical Thinking", "Communication", "Curiosity"],
+        "main_topics": ["Analyzing resource allocation", "Microeconomics", "Macroeconomics", "Econometrics", "Public Policy", "Financial Markets", "International Trade"],
         "courses": ["BA/MA Economics", "MSc Econometrics", "PhD Economics", "CFA Certification"],
         "universities_india": ["Delhi School of Economics", "JNU", "ISI Kolkata", "Gokhale Institute Pune", "IIM Bangalore"],
         "universities_abroad": ["MIT (USA)", "Harvard (USA)", "London School of Economics (UK)", "Princeton (USA)", "University of Chicago (USA)"],
@@ -305,6 +324,7 @@ CAREERS = {
         "icon": "🌾", "desc": "Grow crops using sustainable and chemical-free farming methods",
         "subjects": ["Agriculture", "Biology", "Environmental Science", "Chemistry"],
         "qualities": ["Patience", "Self-Discipline", "Problem Solving", "Adaptability"],
+        "main_topics": ["Sustainable agriculture", "Soil Science", "Crop Rotation", "Natural Pest Management", "Composting", "Agroecology", "Principles of Biodiversity"],
         "courses": ["BSc Agriculture", "MSc Organic Farming", "Permaculture Certifications", "Agricultural Extension Diplomas"],
         "universities_india": ["IARI New Delhi", "Tamil Nadu Agricultural University", "Punjab Agricultural University", "UAS Bangalore", "GB Pant University"],
         "universities_abroad": ["Wageningen University (Netherlands)", "UC Davis (USA)", "University of Reading (UK)", "Lincoln University (New Zealand)", "Swedish University of Agricultural Sciences"],
@@ -321,6 +341,7 @@ CAREERS = {
         "icon": "💵", "desc": "Help individuals and businesses manage money and investments",
         "subjects": ["Economics", "Math", "Business Studies"],
         "qualities": ["Analytical Thinking", "Communication", "Networking", "Attention to Detail", "Negotiation"],
+        "main_topics": ["Money management and investment strategies", "Financial Planning", "Investment Analysis", "Risk Management", "Tax Planning", "Retirement Planning", "Portfolio Management"],
         "courses": ["BCom/MCom", "MBA Finance", "CFP Certification", "CFA Charter", "NISM Certifications"],
         "universities_india": ["IIM Ahmedabad", "IIM Bangalore", "XLRI Jamshedpur", "FMS Delhi", "SP Jain Mumbai"],
         "universities_abroad": ["Wharton (USA)", "London Business School (UK)", "INSEAD (France)", "Columbia Business School (USA)", "NYU Stern (USA)"],
@@ -337,6 +358,7 @@ CAREERS = {
         "icon": "📸", "desc": "Capture powerful images that tell news stories and document events",
         "subjects": ["Photography", "English", "History", "Civics"],
         "qualities": ["Creativity", "Curiosity", "Adaptability", "Communication", "Risk Taking"],
+        "main_topics": ["Visual storytelling through news", "Photography Techniques", "Photo Editing", "Journalistic Ethics", "Visual Narratives", "Understanding Current Affairs"],
         "courses": ["BA Journalism", "Diploma in Photojournalism", "Mass Communication Degree", "Photography Workshops"],
         "universities_india": ["AJK Mass Communication (JMI)", "IIMC Delhi", "Xavier Institute of Communications", "Symbiosis (SIMC)", "Asian College of Journalism"],
         "universities_abroad": ["Missouri School of Journalism (USA)", "Columbia Journalism School (USA)", "Cardiff University (UK)", "Sydney University (Australia)", "Goldsmiths London (UK)"],
@@ -353,6 +375,7 @@ CAREERS = {
         "icon": "🎓", "desc": "Teach at universities and conduct advanced research in your field",
         "subjects": ["English", "Math", "Physics", "Chemistry", "Biology", "History", "Economics"],
         "qualities": ["Patience", "Communication", "Curiosity", "Critical Thinking", "Leadership"],
+        "main_topics": ["Advanced expertise and academic leadership", "Specialized Research", "Academic Writing", "Higher Education Pedagogy", "Grant Writing", "Student Mentorship"],
         "courses": ["Masters in Subject", "PhD (Mandatory)", "NET/SET Qualification", "Post-doctoral Research"],
         "universities_india": ["IITs", "IIMs", "Central Universities", "NITs", "IISc Bangalore"],
         "universities_abroad": ["Harvard (USA)", "Oxford (UK)", "MIT (USA)", "Cambridge (UK)", "Stanford (USA)"],
@@ -369,6 +392,7 @@ CAREERS = {
         "icon": "🚀", "desc": "Start and grow your own business to solve problems and create value",
         "subjects": ["Business Studies", "Economics", "Coding", "Math"],
         "qualities": ["Risk Taking", "Leadership", "Creativity", "Networking", "Problem Solving", "Adaptability"],
+        "main_topics": ["Business creation and growth", "Business Model Innovation", "Marketing Strategy", "Financial Management", "Leadership", "Product Development", "Venture Capital"],
         "courses": ["BBA/MBA", "Startup Incubator Programs", "Online Business Courses", "Industry Experience"],
         "universities_india": ["IIM Ahmedabad (CIIE)", "IIT Bombay (SINE)", "ISB Hyderabad", "BITS Pilani", "NSRCEL Bangalore"],
         "universities_abroad": ["Stanford (USA)", "MIT Sloan (USA)", "Harvard Business School (USA)", "INSEAD (France)", "London Business School (UK)"],
@@ -385,6 +409,7 @@ CAREERS = {
         "icon": "🏛️", "desc": "Serve the nation through administrative and policy roles in government",
         "subjects": ["Political Science", "History", "Geography", "Civics", "Economics"],
         "qualities": ["Leadership", "Communication", "Critical Thinking", "Empathy", "Self-Discipline"],
+        "main_topics": ["Public administration and governance", "Indian Polity", "Governance", "Public Policy", "Ethics & Integrity", "International Relations", "General Administration"],
         "courses": ["Any Graduate Degree", "UPSC CSE Preparation", "Optional Subject Mastery", "Interview Preparation"],
         "universities_india": ["LBSNAA Mussoorie (Training)", "Delhi University", "JNU", "St. Stephen's College", "Loyola College Chennai"],
         "universities_abroad": ["Not typically required - Indian exam focused", "Oxford/Cambridge for further study", "Harvard Kennedy School", "LSE", "Sciences Po Paris"],
@@ -401,6 +426,7 @@ CAREERS = {
         "icon": "🗳️", "desc": "Represent people, make laws, and shape public policy through elected office",
         "subjects": ["Political Science", "History", "Civics", "Economics", "English"],
         "qualities": ["Leadership", "Public Speaking", "Networking", "Empathy", "Negotiation", "Adaptability"],
+        "main_topics": ["Governance and public representation", "Political Science", "Public Policy", "Constitution", "Social Welfare", "Legislative Processes", "Public Speaking"],
         "courses": ["Any Degree (Law/Political Science preferred)", "Public Policy courses", "Leadership programs", "Ground-level party work"],
         "universities_india": ["Delhi University", "JNU (Political Science)", "Symbiosis Law School", "NLSIU Bangalore", "Ashoka University"],
         "universities_abroad": ["Oxford PPE (UK)", "Harvard Kennedy School (USA)", "LSE (UK)", "Sciences Po (France)", "Georgetown (USA)"],
@@ -781,7 +807,7 @@ with st.sidebar:
                 st.markdown(msg["content"])
     
     # Chat input at bottom
-    if prompt := st.chat_input("Ask Lakshya...", key="lakshya_chat"):
+    if prompt := st.chat_input("Ask Lakshya about careers...", key="lakshya_chat"):
         # Add user message
         st.session_state.chat_history.append({"role": "user", "content": prompt})
         # Get response
@@ -967,12 +993,30 @@ elif st.session_state.step == 8:
 # --- STEP 9: CAREER DETAILS ---
 elif st.session_state.step == 9:
     career = st.session_state.selected_career
+    
+    # State management for Main Topics visibility
+    if "last_viewed_career" not in st.session_state:
+        st.session_state.last_viewed_career = None
+    if "show_main_topics" not in st.session_state:
+        st.session_state.show_main_topics = False
+        
+    if st.session_state.last_viewed_career != career:
+        st.session_state.show_main_topics = False
+        st.session_state.last_viewed_career = career
+        # Reset Quiz Logic
+        st.session_state.quiz_active = False
+        st.session_state.quiz_score = 0
+        st.session_state.current_question_index = 0
+        st.session_state.user_answers = {}
+
     data = CAREERS.get(career, {})
     answers = st.session_state.answers
     
     st.markdown(f"# {data.get('icon', '💼')} {career}")
     st.markdown(f"*{data.get('desc', '')}*")
     st.divider()
+
+
     
     # COURSES
     st.markdown("## 📚 Recommended Courses")
@@ -1050,13 +1094,71 @@ elif st.session_state.step == 9:
         """, unsafe_allow_html=True)
     
     st.divider()
-    c1, c2 = st.columns(2)
-    if c1.button("⬅️ Back to Careers"):
+    if st.button("⬅️ Back to Careers"):
         st.session_state.step = 8
         st.rerun()
-    if c2.button("🔄 Start Over"):
-        st.session_state.step = 1
-        st.session_state.careers = []
-        st.session_state.answers = {}
-        st.session_state.selected_career = None
-        st.rerun()
+
+    st.divider()
+    st.divider()
+    
+    # MAIN TOPICS (Conditional Display)
+    if not st.session_state.show_main_topics:
+        if st.button("Select Career", key="reveal_topics_btn", use_container_width=True):
+            st.session_state.show_main_topics = True
+            st.rerun()
+            
+    if st.session_state.show_main_topics:
+        st.markdown("## 🧠 Main Topics")
+        topics = data.get("main_topics", [])
+        if isinstance(topics, list):
+            for i, topic in enumerate(topics, 1):
+                st.markdown(f"{i}. {topic}")
+        else:
+            st.info(topics)
+
+    # QUIZ SECTION
+    if st.session_state.show_main_topics:
+        st.divider()
+        if not st.session_state.quiz_active:
+             if st.button("✍️ Take a Quiz on " + career, use_container_width=True):
+                 st.session_state.quiz_active = True
+                 st.session_state.current_question_index = 0
+                 st.session_state.quiz_score = 0
+                 st.session_state.user_answers = {}
+                 st.rerun()
+        
+        if st.session_state.quiz_active:
+            st.markdown(f"### 📝 {career} Quiz")
+            questions = CAREER_QUIZZES.get(career, [])
+            
+            if not questions:
+                st.warning("Quiz not available for this career yet.")
+            else:
+                total_questions = len(questions)
+                current_idx = st.session_state.current_question_index
+                
+                if current_idx < total_questions:
+                    q_data = questions[current_idx]
+                    st.markdown(f"**Question {current_idx + 1} of {total_questions}**")
+                    st.markdown(f"#### {q_data['question']}")
+                    
+                    options = q_data['options']
+                    answer = st.radio("Choose an answer:", options, key=f"q_{current_idx}_{career}")
+                    
+                    if st.button("Next" if current_idx < total_questions - 1 else "Submit"):
+                        if answer == q_data['answer']:
+                            st.session_state.quiz_score += 1
+                        
+                        st.session_state.user_answers[current_idx] = answer
+                        
+                        # Move to next or finish
+                        st.session_state.current_question_index += 1
+                        st.rerun()
+                else:
+                    # Results
+                    st.success(f"🎉 Quiz Completed! You scored {st.session_state.quiz_score} out of {total_questions}.")
+                    if st.button("Retake Quiz"):
+                        st.session_state.quiz_active = False
+                        st.session_state.current_question_index = 0
+                        st.session_state.quiz_score = 0
+                        st.rerun()
